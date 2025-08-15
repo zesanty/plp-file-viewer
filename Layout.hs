@@ -1,11 +1,9 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Layout (
     renderPageBody,
     layout
 ) where
 
-import Types
+import Types ( PageData(..), Item(..) )
 import Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as TL
 import System.FilePath ((</>), takeDirectory, takeExtension, takeFileName)
@@ -28,7 +26,7 @@ renderItem currentPath activeFile item =
 
 renderUploadForm :: FilePath -> Text
 renderUploadForm p =
-    let displayPath = if p == "." then "/" else "/" <> TL.pack p
+    let displayPath = "/" <> TL.pack p
     in mconcat ["<form id=\"upload-form\" action='/submit' method='post' enctype='multipart/form-data' class='sidebar-upload'>",
                 "<h4>Subir a: '", displayPath, "'</h4>",
                 "<input type='hidden' name='current_dir' value='", TL.pack p, "'>",
@@ -48,7 +46,7 @@ renderContentPane path content =
 
 renderPageBody :: PageData -> Text
 renderPageBody (BrowserPage path items) = mconcat [
-    "<h1>PLP: ", if path == "." then "/" else "/" <> TL.pack path, "</h1>",
+    "<h1>PLP: ", "/" <> TL.pack path, "</h1>",
     renderUpLink path,
     "<ul>", mconcat $ map (renderItem path "") items, "</ul>",
     renderUploadForm path ]
