@@ -3,10 +3,11 @@ module Layout (
     layout
 ) where
 
-import Types ( PageData(..), Item(..) )
+import Types ( PageData(..), Item(..), Script(..) )
 import Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as TL
 import System.FilePath ((</>), takeDirectory, takeExtension, takeFileName)
+import Data.List (elem)
 
 renderUpLink :: FilePath -> Text
 renderUpLink p
@@ -34,61 +35,98 @@ renderUploadForm p =
                 "<span id=\"upload-status\" class=\"upload-status\"></span>",
                 "</form>"]
 
-renderContentPane :: FilePath -> Text -> Text
+renderContentPane :: FilePath -> Text -> (Text, [Script])
 renderContentPane path content =
     let escapeHtml = TL.replace "<" "&lt;" . TL.replace ">" "&gt;"
     in case takeExtension path of
-        ".md" -> mconcat [ "<div class=\"content-pane markdown-body\" id=\"content-output\"></div>",
-                           "<script id=\"content-source\" type=\"text/plain\">", content, "</script>" ]
-        ".pdf" -> "<div class=\"content-pane\"><embed src=\"/serve/" <> TL.pack path <> "\" type=\"application/pdf\" width=\"100%\" height=\"800px\" /></div>"
-        ext -> let langClass = if ext == ".hs" then "language-haskell" else "language-plaintext"
-               in mconcat ["<div class=\"content-pane\"><pre class=\"file-viewer\"><code class=\"", langClass, "\">", escapeHtml content, "</code></pre></div>"]
-
-renderPageBody :: PageData -> Text
-renderPageBody (BrowserPage path items) = mconcat [
-    "<h1>PLP: ", "/" <> TL.pack path, "</h1>",
-    renderUpLink path,
-    "<ul>", mconcat $ map (renderItem path "") items, "</ul>",
-    renderUploadForm path ]
-renderPageBody (FilePage path content items) = mconcat [
-    "<h1>Viendo: /", TL.pack path, "</h1>",
-    "<div class=\"page-grid\">",
-        "<div class=\"sidebar\">",
+        ".md" ->
+            let html = mconcat [ "<div class=\"content-pane markdown-body\" id=\"content-output\"></div>",
+                                 "<script id=\"content-source\" type=\"text/plain\">", content, "</script>" ]
+                scripts = [Marked, MathJax, Prism]
+            in (html, scripts)
+        ".pdf" ->
+            let html = "<div class=\"content-pane\"><embed src=\"/serve/" <> TL.pack path <> "\" type=\"application/pdf\" width=\"100%\" height=\"800px\" /></div>"
+            in (html, [])
+        ext ->
+            let langClass = case ext of
+                              ".hs" -> "language-haskell"
+                              _     -> "language-plaintext"
+                html = mconcat ["<div class=\"content-pane\"><pre class=\"file-viewer\"><code class=\"", langClass, "\">", escapeHtml content, "</code></pre></div>"]
+            in (html, [Prism])
+            
+renderPageBody :: PageData -> (Text, [Script])
+renderPageBody (BrowserPage path items) =
+    let body = mconcat [
+            "<h1>PLP: ", "/" <> TL.pack path, "</h1>",
             renderUpLink path,
-            "<ul>", mconcat $ map (renderItem (takeDirectory path) (TL.pack $ takeFileName path)) items, "</ul>",
-            renderUploadForm (takeDirectory path),
-        "</div>",
-        renderContentPane path content,
-    "</div>" ]
+            "<ul>", mconcat $ map (renderItem path "") items, "</ul>",
+            renderUploadForm path ]
+    in (body, [])
+renderPageBody (FilePage path content items) =
+    let (contentPane, scripts) = renderContentPane path content
+        body = mconcat [
+            "<h1>Viendo: /", TL.pack path, "</h1>",
+            "<div class=\"page-grid\">",
+                "<div class=\"sidebar\">",
+                    renderUpLink path,
+                    "<ul>", mconcat $ map (renderItem (takeDirectory path) (TL.pack $ takeFileName path)) items, "</ul>",
+                    renderUploadForm (takeDirectory path),
+                "</div>",
+                contentPane,
+            "</div>" ]
+    in (body, scripts)
 
+-- Returns a tuple: (tags for <head>, tags for <body>)
+renderScript :: Script -> (Text, Text)
+renderScript script = case script of
+    MathJax ->
+        ( mconcat [
+            "<script>MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] } };</script>",
+            "<script id=\"MathJax-script\" async src=\"https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js\"></script>"
+          ]
+        , ""
+        )
+    Marked ->
+        ( ""
+        , mconcat [
+            "<script src=\"https://cdn.jsdelivr.net/npm/marked/marked.min.js\"></script>",
+            "<script>",
+            "const source = document.getElementById('content-source');",
+            "if (source) { document.getElementById('content-output').innerHTML = marked.parse(source.innerHTML); }",
+            "</script>"
+          ]
+        )
+    Prism ->
+        ( "<link rel=\"stylesheet\" type=\"text/css\" href=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/themes/prism-okaidia.min.css\">"
+        , mconcat [
+            "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/components/prism-core.min.js\"></script>",
+            "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/plugins/autoloader/prism-autoloader.min.js\"></script>"
+          ]
+        )
 
--- Podría usar pandoc para soportar typst.. y hasta ahí --
-layout :: Text -> Text -> Text
-layout title body = mconcat [
-    "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>", title, "</title>",
-    "<link rel=\"stylesheet\" type=\"text/css\" href=\"/static/style.css\"><link rel=\"stylesheet\" type=\"text/css\" href=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/themes/prism-okaidia.min.css\">",
-    "<script>MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] } };</script>",
-    "<script id=\"MathJax-script\" async src=\"https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js\"></script>",
-    "</head><body><div class=\"container\">", body,
-    "</div>",
-    "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/components/prism-core.min.js\"></script>",
-    "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/prism/1.30.0/plugins/autoloader/prism-autoloader.min.js\"></script>",
-    "<script src=\"https://cdn.jsdelivr.net/npm/marked/marked.min.js\"></script>",
-    "<script>",
-    "const source = document.getElementById('content-source');",
-    "if (source) { document.getElementById('content-output').innerHTML = marked.parse(source.innerHTML); }",
-    "</script>",
-    "<script>",
-    "const uploadForm = document.getElementById('upload-form');",
-    "const fileInput = document.getElementById('file-input');",
-    "const uploadStatus = document.getElementById('upload-status');",
-    "if (fileInput) {",
-    "  fileInput.addEventListener('change', function() {",
-    "    if (this.files.length > 0) {",
-    "      uploadStatus.textContent = 'Subiendo...';",
-    "      uploadForm.submit();",
-    "    }",
-    "  });",
-    "}",
-    "</script>",
-    "</body></html>" ]
+layout :: Text -> [Script] -> Text -> Text
+layout title scripts body =
+    let (headTags, bodyTags) = unzip $ map renderScript scripts
+        allHeadTags = mconcat headTags
+        allBodyTags = mconcat bodyTags
+    in mconcat [
+        "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>", title, "</title>",
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"/static/style.css\">",
+        allHeadTags,
+        "</head><body><div class=\"container\">", body, "</div>",
+        allBodyTags,
+        "<script>",
+        "const uploadForm = document.getElementById('upload-form');",
+        "const fileInput = document.getElementById('file-input');",
+        "const uploadStatus = document.getElementById('upload-status');",
+        "if (fileInput) {",
+        "  fileInput.addEventListener('change', function() {",
+        "    if (this.files.length > 0) {",
+        "      uploadStatus.textContent = 'Subiendo...';",
+        "      uploadForm.submit();",
+        "    }",
+        "  });",
+        "}",
+        "</script>",
+        "</body></html>"
+    ]

@@ -1,38 +1,35 @@
-import Types ( PageData(FilePage, BrowserPage), Item(..) )
-import Layout ( renderPageBody, layout )
+import Types (PageData(..), Item(..), Script(..))
+import Layout (renderPageBody, layout)
 import Web.Scotty
 import qualified Data.ByteString.Lazy as BL
-import Control.Applicative ((<|>), (<$>))
-import Control.Monad (forM)
 import Control.Monad.IO.Class (liftIO)
 import Control.Exception (try, IOException)
-import Data.List (sort)
 import System.Directory (doesDirectoryExist, listDirectory)
-import System.FilePath ((</>), takeDirectory, takeExtension)
-import Data.Text.Lazy (Text)
+import System.FilePath ((</>), takeExtension, takeDirectory)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TLE
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
+import Data.Text.Lazy (Text)
 import Network.Wai.Parse (fileName, fileContent)
-import Data.Bool
+import Data.List (sort)
+import Control.Applicative ((<|>))
+import Data.Bool (bool)
 
 filesDir :: FilePath
 filesDir = "exercises"
 
--- I/O
 getDirectoryData :: FilePath -> IO (Either Text (FilePath, [Item]))
 getDirectoryData path = do
     let fullPath = filesDir </> path
-    result <- try (listDirectory fullPath) :: IO (Either IOException [String])
-    case result of
-        Left _ -> return $ Left "Error: Directorio no encontrado o no se puede leer."
+    listResult <- try (listDirectory fullPath) :: IO (Either IOException [String])
+    case listResult of
+        Left _ -> return $ Left "Error: Directory not found or cannot be read."
         Right names -> do
-            items <- forM (sort names) (\name -> 
-                do
-                isDir <- doesDirectoryExist (fullPath </> name)
-                pure (bool (FileItem name) (DirItem name) isDir))
-            return (Right (path, items))
+            items <- traverse toItem (sort names)
+            return $ Right (path, items)
+    where
+        toItem name = bool (FileItem name) (DirItem name) <$> doesDirectoryExist (filesDir </> path </> name)
 
 getFileData :: FilePath -> IO (Either Text (FilePath, Text))
 getFileData path = do
@@ -50,15 +47,17 @@ main = scotty 3000 $ do
 
     get "/" $ redirect "/browse/."
 
-    get (regex "^/serve/(.*)$") $ do
-        filepath <- TL.unpack <$> pathParam "1"
-        file (filesDir </> filepath)
+    get (regex "^/serve/(.*)$") $
+        pathParam "1" >>= file . (filesDir </>) . TL.unpack
 
     get (regex "^/browse/(.*)$") $ do
         path <- TL.unpack <$> (pathParam "1" <|> pure "")
         let relativePath = if null path then "." else path
         result <- liftIO $ getDirectoryData relativePath
-        either text (\(p, items) -> html $ layout "Navegador" (renderPageBody $ BrowserPage p items)) result
+        either text (\(p, items) -> do
+            let (body, scripts) = renderPageBody $ BrowserPage p items
+            html $ layout "Navegador" scripts body
+            ) result
 
     get (regex "^/exercise/(.*)$") $ do
         filepath <- pathParam "1"
@@ -69,7 +68,10 @@ main = scotty 3000 $ do
                 dirResult <- liftIO $ getDirectoryData parentDir
                 fileResult <- liftIO $ getFileData (TL.unpack filepath)
                 let combinedResult = (FilePage . fst <$> fileResult) <*> (snd <$> fileResult) <*> (snd <$> dirResult)
-                either text (html . layout ("Viendo: " <> filepath) . renderPageBody) combinedResult
+                either text (\pageData -> do
+                    let (body, scripts) = renderPageBody pageData
+                    html $ layout ("Viendo: " <> filepath) scripts body
+                    ) combinedResult
 
     post "/submit" $ do
         fs <- files
@@ -77,7 +79,7 @@ main = scotty 3000 $ do
         case fs of
             ((_, info):_) -> do
                 let fname = T.unpack . TE.decodeUtf8 $ fileName info
-                let saveDir = if currentDir == "." then filesDir else filesDir </> TL.unpack currentDir
+                let saveDir = bool (filesDir </> TL.unpack currentDir) filesDir (currentDir == ".")
                 liftIO $ BL.writeFile (saveDir </> fname) (fileContent info)
-                redirect $ if currentDir == "." then "/browse/." else "/browse/" <> currentDir
+                redirect $ bool ("/browse/" <> currentDir) "/browse/." (currentDir == ".")
             [] -> redirect "/browse/."

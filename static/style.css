@@ -1,4 +1,3 @@
-/* --- Variables Globales y Reset --- */
 :root {
     --border: 1px solid #e0e0e0;
     --radius: 8px;
@@ -9,8 +8,6 @@
     --color-active-bg: #e0eafc;
 }
 * { box-sizing: border-box; }
-
-/* --- Centrado Principal con Flexbox --- */
 body {
     font-family: system-ui, sans-serif;
     background: var(--bg-main);
@@ -22,8 +19,6 @@ body {
     align-items: center;
     justify-content: center;
 }
-
-/* --- Contenedor Principal --- */
 .container {
     width: 100%;
     max-width: 1200px;
@@ -36,8 +31,6 @@ body {
 .page-grid { display: flex; gap: var(--spacing); }
 .sidebar { flex: 0 0 280px; }
 .content-pane { flex: 1; min-width: 0; }
-
-/* --- Tipografía y Listas --- */
 h1, h2, h3, h4 {
     color: #333;
     border-bottom: var(--border);
@@ -51,8 +44,6 @@ li {
     margin-bottom: 0.5em;
     transition: background-color 0.2s;
 }
-
-/* --- Interacción y Enlaces --- */
 a {
     display: block;
     padding: 0.5em 0.75em;
@@ -65,8 +56,6 @@ li:hover { background: #f0f0f0; }
     border-left: 3px solid var(--color-primary);
     background: var(--color-active-bg);
 }
-
-/* --- Componentes Específicos --- */
 .sidebar-upload {
     margin-top: var(--spacing);
     padding-top: var(--spacing);
@@ -82,4 +71,30 @@ pre.file-viewer {
 pre.file-viewer code {
     white-space: pre-wrap;
     word-break: break-word;
+}
+#file-input {
+    width: 100%;
+    font-size: 0.9em;
+    color: #555;
+}
+#file-input::file-selector-button {
+    background: var(--color-primary);
+    border: none;
+    color: white;
+    padding: 0.7em 1em;
+    border-radius: var(--radius);
+    font-weight: 500;
+    cursor: pointer;
+    margin-right: 1em;
+    transition: background-color 0.2s;
+}
+#file-input::file-selector-button:hover {
+    background-color: #0056b3;
+}
+.upload-status {
+    display: block;
+    margin-top: 0.5em;
+    font-size: 0.85em;
+    color: #333;
+    min-height: 1.2em;
 }
