@@ -1,4 +1,4 @@
-import Types (PageData(..), Item(..), Script(..))
+import Types (PageData(..), Item(..))
 import Layout (renderPageBody, layout)
 import Web.Scotty
 import qualified Data.ByteString.Lazy as BL
