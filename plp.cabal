@@ -1,0 +1,21 @@
+cabal-version:      2.4
+name:               plp
+version:            0.1.0
+build-type:         Simple
+
+executable plp
+    main-is:          Main.hs
+    other-modules:
+        Types
+        Logic
+    hs-source-dirs:   .
+    default-language: Haskell2010
+    ghc-options:      -threaded -rtsopts -with-rtsopts=-N
+    build-depends:
+        base >=4.7 && <5,
+        scotty,
+        bytestring,
+        directory,
+        filepath,
+        text,
+        wai-extra

@@ -1,0 +1,85 @@
+Definiciones:
+i. indentar i = {I0} foldDoc (\s acc -> Texto s acc) (\n acc -> Linea (i + n) acc) Vacio
+ii. foldDoc fTexto fLinea base v = {FD} case v of
+                               Vacio -> base
+                               Texto s doc -> fTexto s (rec doc)
+                               Linea n doc -> fLinea n (rec doc)
+                               where rec = foldDoc fTexto fLinea base
+
+DEMOSTRACIÓN PRINCIPAL:
+
+p(x)=  ∀x :: Doc, ∀n :: Int, ∀m :: Int. (n >= 0 ^ m >= 0 => indentar(n,indentar(m,x))=indentar(n+m,x))
+
+Además, ∀k :: Int, s :: String, d :: Doc, P(Vacio) ^ P(Texto s d) ^ P(Linea k d) => ∀x :: Doc P(x)
+pues por inducción estructural vale que si valen los casos base (Vacio) y los casos recursivos asumiendo HI=P(d)
+entonces es verdadero.
+
+*Caso Vacio*
+P(Vacio) = indentar n (indentar m Vacio) = Indentar (n+m) Vacio
+- Izquierda:
+ = {LEM1} Indentar n Vacio = {LEM1} Vacio
+- Derecha:
+ = {LEM1} Vacio
+
+*Caso Texto s d*
+∀s :: String, ∀d :: Doc
+
+P(Texto s d) = Indentar n (Indentar m (Texto s d)) = Indentar (n+m) (Texto s d)
+- Izquierda:
+ = {LEM2} Indentar n (Texto s (Indentar m d)) = {LEM2} Texto s (Indentar n (Indentar m d)) = {H.I} Texto s (Indentar (n+m) d)
+- Derecha: 
+ = {LEM2} Texto s (Indentar (n+m) d)
+
+*Caso Linea k d*
+∀ k :: Int , ∀d :: Doc
+
+P(Linea k d) =  Indentar n (Indentar m (Linea k d)) = Indentar (n+m) (Linea k d)
+- Izquierda:
+ = {LEM3} Indentar n (Linea (m+k) (indentar m d)) = {LEM3} Linea (m+n+k) (Indentar n (Indentar m d)) = {H.I} Linea (m+n+k) (Indentar (m+n) d)
+- Derecha:
+ = {LEM3} Linea (m+n+k) (Indentar (m+n) d)
+
+
+Lema 1: {LEM1}
+∀k :: Int (k >= 0 => indentar k Vacio = Vacio.)
+
+indentar k Vacio 
+= {I0} foldDoc (\s acc -> Texto s acc) (\n acc -> Linea (k + n) acc) Vacio Vacio
+= {FD} case Vacio of 
+            Vacio -> Vacio                           
+            Texto s doc -> (\s acc -> Texto s acc) s (rec doc)
+            Linea n doc -> (\n acc -> Linea (k + n) acc) n (rec doc)
+            where rec = foldDoc fTexto fLinea base 
+= {Case} Vacio
+
+Lema 2: {LEM2}
+∀d :: Doc, ∀s :: String, ∀k :: Int. (k >= 0 => indentar k (Texto s d) = Texto s (indentar k d))
+
+indentar k (Texto s d) 
+= {I0} foldDoc (\s acc -> Texto s acc) (\n acc -> Linea (k + n) acc) Vacio (Texto s d)
+= {FD} case (Texto s d) of
+    Vacio -> Vacio
+    Texto s doc -> (\s acc -> Texto s acc) s (rec doc)
+    Linea n doc -> (\n acc -> Linea (k + n) acc) n (rec doc)
+    where rec = foldDoc (\s acc -> Texto s acc) (\n acc -> Linea (k + n) acc) Vacio
+= {Case} (\s acc -> Texto s acc) s (foldDoc (\s acc -> Texto s acc) (\n acc -> Linea (k + n) acc) Vacio d)
+= {I0}  (\s acc -> Texto s acc) s (indentar k d)
+= {β} (\acc -> Texto s acc) (indentar k d)
+= {β} Texto s (Indentar k d)
+
+Lema 3: {LEM3}
+∀d ::Doc, ∀m ::Int, ∀k ::Int. (k >= 0 ^ m >= 0 => indentar m (Linea k d) = Linea (m+k) (indentar m d))
+
+
+indentar m (Linea k d) 
+= {I0} foldDoc (\s acc -> Texto s acc) (\n acc -> Linea (m + n) acc) Vacio (Linea k d)
+= {FD} case (Linea k d) of
+                Vacio -> Vacio
+                Texto s doc -> (\s acc -> Texto s acc) s (rec doc)
+                Linea n doc -> (\n acc -> Linea (m + n) acc) n (rec doc)
+                where rec = foldDoc (\s acc -> Texto s acc) (\n acc -> Linea (m + n) acc) Vacio
+= {Case} (\n acc -> Linea (m + n) acc) k (foldDoc (\s acc -> Texto s acc) (\n acc -> Linea (m + n) acc) Vacio d)
+= {I0} (\n acc -> Linea (m + n) acc) k (indentar m d)
+= {β} (\acc -> Linea (m + k) acc) (indentar m d)
+= {β} Linea (m + k) (indentar m d)
+ 

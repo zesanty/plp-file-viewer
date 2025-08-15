@@ -1,0 +1,85 @@
+/* --- Variables Globales y Reset --- */
+:root {
+    --border: 1px solid #e0e0e0;
+    --radius: 8px;
+    --spacing: 1.5em;
+    --bg-main: #f7f7f7;
+    --bg-container: #fff;
+    --color-primary: #007bff;
+    --color-active-bg: #e0eafc;
+}
+* { box-sizing: border-box; }
+
+/* --- Centrado Principal con Flexbox --- */
+body {
+    font-family: system-ui, sans-serif;
+    background: var(--bg-main);
+    color: #333;
+    margin: 0;
+    padding: var(--spacing);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* --- Contenedor Principal --- */
+.container {
+    width: 100%;
+    max-width: 1200px;
+    background: var(--bg-container);
+    border: var(--border);
+    border-radius: var(--radius);
+    padding: var(--spacing);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+.page-grid { display: flex; gap: var(--spacing); }
+.sidebar { flex: 0 0 280px; }
+.content-pane { flex: 1; min-width: 0; }
+
+/* --- Tipografía y Listas --- */
+h1, h2, h3, h4 {
+    color: #333;
+    border-bottom: var(--border);
+    padding-bottom: 0.5em;
+    margin: 0 0 0.5em;
+}
+ul { list-style: none; padding: 0; margin: 1em 0; }
+li {
+    border: var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.5em;
+    transition: background-color 0.2s;
+}
+
+/* --- Interacción y Enlaces --- */
+a {
+    display: block;
+    padding: 0.5em 0.75em;
+    text-decoration: none;
+    color: var(--color-primary);
+    font-weight: 500;
+}
+li:hover { background: #f0f0f0; }
+.active-file {
+    border-left: 3px solid var(--color-primary);
+    background: var(--color-active-bg);
+}
+
+/* --- Componentes Específicos --- */
+.sidebar-upload {
+    margin-top: var(--spacing);
+    padding-top: var(--spacing);
+    border-top: var(--border);
+}
+pre.file-viewer {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    border-radius: var(--radius);
+    padding: var(--spacing);
+    overflow-x: auto;
+}
+pre.file-viewer code {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
