@@ -1,10 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Types
-import Logic
+import Types ( PageData(FilePage, BrowserPage), Item(..) )
+import Layout ( renderPageBody, layout )
 import Web.Scotty
 import qualified Data.ByteString.Lazy as BL
-import Control.Applicative ((<|>))
+import Control.Applicative ((<|>), (<$>))
+import Control.Monad (forM)
 import Control.Monad.IO.Class (liftIO)
 import Control.Exception (try, IOException)
 import Data.List (sort)
@@ -26,28 +27,32 @@ getDirectoryData path = do
     let fullPath = exercisesDir </> path
     result <- try (listDirectory fullPath) :: IO (Either IOException [String])
     case result of
-        Left _ -> return $ Left "Error: No es un directorio o no se pudo leer."
+        Left _ -> return $ Left "Error: Directorio no encontrado o no se puede leer."
         Right names -> do
-            items <- mapM (\name -> do
+            items <- forM (sort names) $ \name -> do
                 isDir <- doesDirectoryExist (fullPath </> name)
-                return $ if isDir then DirItem name else FileItem name) (sort names)
+                return $ if isDir then DirItem name else FileItem name
             return $ Right (path, items)
 
 getFileData :: FilePath -> IO (Either Text (FilePath, Text))
 getFileData path = do
-    result <- try (BL.readFile (exercisesDir </> path)) :: IO (Either IOException BL.ByteString)
+    let fullPath = exercisesDir </> path
+    result <- try (BL.readFile fullPath) :: IO (Either IOException BL.ByteString)
     return $ case result of
         Left _ -> Left "Error: Archivo no encontrado."
         Right content -> Right (path, TLE.decodeUtf8 content)
 
 main :: IO ()
 main = scotty 3000 $ do
-    get "/static/style.css" $ setHeader "Content-Type" "text/css" >> file "static/style.css"
+    get "/static/style.css" $ do
+        setHeader "Content-Type" "text/css"
+        file "static/style.css"
+
     get "/" $ redirect "/browse/."
 
     get (regex "^/serve/(.*)$") $ do
-        filepath <- pathParam "1"
-        file (exercisesDir </> TL.unpack filepath)
+        filepath <- TL.unpack <$> pathParam "1"
+        file (exercisesDir </> filepath)
 
     get (regex "^/browse/(.*)$") $ do
         path <- TL.unpack <$> (pathParam "1" <|> pure "")
@@ -71,7 +76,7 @@ main = scotty 3000 $ do
         currentDir <- formParam "current_dir"
         case fs of
             ((_, info):_) -> do
-                let fname = T.unpack $ TE.decodeUtf8 $ fileName info
+                let fname = T.unpack . TE.decodeUtf8 $ fileName info
                 let saveDir = if currentDir == "." then exercisesDir else exercisesDir </> TL.unpack currentDir
                 liftIO $ BL.writeFile (saveDir </> fname) (fileContent info)
                 redirect $ if currentDir == "." then "/browse/." else "/browse/" <> currentDir

@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Logic (
+module Layout (
     renderPageBody,
     layout
 ) where
@@ -64,7 +64,7 @@ renderPageBody (FilePage path content items) = mconcat [
     "</div>" ]
 
 
--- NO TENGO LA MENOR IDEA DE COMO HACER ESTO SIN JS, MAL AHÍ. --
+-- Podría usar pandoc para soportar typst.. y hasta ahí --
 layout :: Text -> Text -> Text
 layout title body = mconcat [
     "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>", title, "</title>",
